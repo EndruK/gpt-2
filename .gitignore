@@ -3,3 +3,7 @@ __pycache__
 models/
 checkpoint
 samples
+.idea
+.ipynb_checkpoints
+.vscode
+venv/

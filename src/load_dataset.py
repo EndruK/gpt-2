@@ -3,6 +3,7 @@ import numpy as np
 import os
 import tensorflow as tf
 import tqdm
+import sys
 
 
 def load_dataset(enc, path, combine):
@@ -28,15 +29,22 @@ def load_dataset(enc, path, combine):
                 for item in npz.files:
                     token_chunks.append(npz[item])
         else:
-            # Plain text
-            with open(path, 'r') as fp:
-                raw_text += fp.read()
-            if len(raw_text) >= combine:
-                tokens = np.stack(enc.encode(raw_text))
-                token_chunks.append(tokens)
-                raw_text = ''
+            if path.endswith(".java"):
+                # Plain text
+                with open(path, 'r') as fp:
+                    try:
+                        raw_text += fp.read()
+                    except Exception:
+                        print(str(path) + " has wrong encoding")
+                        sys.exit(0)
+                if len(raw_text) >= combine:
+                    tokens = np.stack(enc.encode(raw_text))
+                    token_chunks.append(tokens)
+                    raw_text = ''
+                else:
+                    raw_text += '<|endoftext|>'
             else:
-                raw_text += '<|endoftext|>'
+                print("this is not a java file: " + path)
     if raw_text:
         tokens = np.stack(enc.encode(raw_text))
         token_chunks.append(tokens)

@@ -16,7 +16,8 @@ def interact_model(
     length=None,
     temperature=1,
     top_k=0,
-    top_p=0.0
+    top_p=0.0,
+    checkpoint_name="run1"
 ):
     """
     Interactively run the model
@@ -37,6 +38,7 @@ def interact_model(
      special setting meaning no restrictions. 40 generally is a good value.
     :top_p=0.0 : Float value controlling diversity. Implements nucleus sampling,
      overriding top_k if set to a value > 0. A good setting is 0.9.
+    :checkpoint_name=run1 : the name of the checkpoint which has to be loaded
     """
     if batch_size is None:
         batch_size = 1
@@ -64,7 +66,12 @@ def interact_model(
         )
 
         saver = tf.train.Saver()
-        ckpt = tf.train.latest_checkpoint(os.path.join('models', model_name))
+        if os.path.isdir(os.path.join("checkpoint", checkpoint_name)):
+            print("load checkpoint")
+            ckpt = tf.train.latest_checkpoint(os.path.join('checkpoint', checkpoint_name))
+        else:
+            print("load main model")
+            ckpt = tf.train.latest_checkpoint(os.path.join('models', model_name))
         saver.restore(sess, ckpt)
 
         while True:
