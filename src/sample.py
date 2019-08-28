@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-import model
+import model as model
 
 def top_k_logits(logits, k):
     if k == 0:
@@ -60,37 +60,48 @@ def sample_sequence(*, hparams, length, start_token=None, batch_size=None, conte
         # rather than leaving the last token transformer calculation to the while loop.
         context_output = step(hparams, context[:, :-1])
 
-        def body(past, prev, output):
+        def body(past, prev, output, all_probs):
             next_outputs = step(hparams, prev[:, tf.newaxis], past=past)
             logits = next_outputs['logits'][:, -1, :]  / tf.to_float(temperature)
             if top_p > 0.0:
                 logits = top_p_logits(logits, p=top_p)
             else:
                 logits = top_k_logits(logits, k=top_k)
+                print(logits)
+            probs = logits
             samples = tf.multinomial(logits, num_samples=1, output_dtype=tf.int32)
+
+            print(probs)
             return [
                 tf.concat([past, next_outputs['presents']], axis=-2),
                 tf.squeeze(samples, axis=[1]),
                 tf.concat([output, samples], axis=1),
+                tf.concat([all_probs, probs], axis=0)
             ]
 
         def cond(*args):
             return True
 
-        _, _, tokens = tf.while_loop(
+        # 198 is the line break symbol \n
+
+        probs = tf.fill([batch_size, hparams.n_vocab], float(0.0))
+
+        _, _, tokens, probs = tf.while_loop(
             cond=cond, body=body,
             maximum_iterations=length,
             loop_vars=[
                 context_output['presents'],
                 context[:, -1],
                 context,
+                probs
             ],
             shape_invariants=[
                 tf.TensorShape(model.past_shape(hparams=hparams, batch_size=batch_size)),
                 tf.TensorShape([batch_size]),
                 tf.TensorShape([batch_size, None]),
+                tf.TensorShape([None, hparams.n_vocab])
             ],
             back_prop=False,
         )
 
-        return tokens
+        return tokens, probs
