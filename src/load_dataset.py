@@ -4,6 +4,7 @@ import os
 import tensorflow as tf
 import tqdm
 import sys
+import magic
 
 
 def load_dataset(enc, path, combine):
@@ -22,7 +23,10 @@ def load_dataset(enc, path, combine):
 
     token_chunks = []
     raw_text = ''
-    for path in tqdm.tqdm(paths):
+    files = tqdm.tqdm(paths)
+    failed_files = []
+    print("start preprocessing")
+    for i, path in enumerate(files):
         if path.endswith('.npz'):
             # Pre-encoded
             with np.load(path) as npz:
@@ -31,24 +35,50 @@ def load_dataset(enc, path, combine):
         else:
             if path.endswith(".java"):
                 # Plain text
-                with open(path, 'r') as fp:
-                    try:
-                        raw_text += fp.read()
-                    except Exception:
-                        print(str(path) + " has wrong encoding")
-                        sys.exit(0)
-                if len(raw_text) >= combine:
-                    tokens = np.stack(enc.encode(raw_text))
-                    token_chunks.append(tokens)
-                    raw_text = ''
-                else:
-                    raw_text += '<|endoftext|>'
+                try:
+                    encoding = get_encoding(path)
+                    with open(path, 'r', encoding=encoding) as fp:
+                        try:
+                            raw_text += fp.read()
+                        except Exception:
+                            print(str(path) + " has wrong encoding")
+                            sys.exit(0)
+                    if len(raw_text) >= combine:
+                        tokens = np.stack(enc.encode(raw_text))
+                        token_chunks.append(tokens)
+                        raw_text = ''
+                    else:
+                        raw_text += '<|endoftext|>'
+                except UnicodeDecodeError:
+                    failed_files.append([path, "UnicodeDecodeError"])
+                except LookupError:
+                    failed_files.append([path, "LookupError"])
+                except FileNotFoundError:
+                    failed_files.append([path, "FileNotFoundError"])
             else:
-                print("this is not a java file: " + path)
+                #print("this is not a java file: " + path)
+                failed_files.append([path, "NotAJavaFile"])
+    print("failed files: " + str(len(failed_files)))
+    failed_str = ""
+    for file, reason in failed_files:
+        print(file)
+        failed_str += "[" + reason + "] " + file + "\n"
+    with open("failed_files.txt", "w") as f:
+        f.write(failed_str)
+
     if raw_text:
         tokens = np.stack(enc.encode(raw_text))
         token_chunks.append(tokens)
     return token_chunks
+
+
+def get_encoding(path):
+    m = magic.Magic(mime_encoding=True)
+    input_file = open(path)
+    blob = input_file.read()
+    encoding = m.from_buffer(blob)
+    input_file.close()
+    return encoding
 
 
 def binary_search(f, lo, hi):
