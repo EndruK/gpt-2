@@ -59,15 +59,12 @@ def load_dataset(enc, path, combine):
                 #print("this is not a java file: " + path)
                 failed_files.append([path, "NotAJavaFile"])
     print("failed files: " + str(len(failed_files)))
-    failed_str = ""
-    for file, reason in failed_files:
-        try:
-            print(file)
-            failed_str += "[" + reason + "] " + file + "\n"
-        except Exception:
-            print("a file is so completely out of format, that even it could not be displayed here - skipping")
-    with open("failed_files.txt", "w") as f:
-        f.write(failed_str)
+    with open("failed_files.txt", "a") as f:
+        for file, reason in failed_files:
+            try:
+                f.write("[" + reason + "] " + file + "\n")
+            except Exception:
+                print("a file is so completely out of format, that even it could not be displayed here - skipping")
 
     if raw_text:
         tokens = np.stack(enc.encode(raw_text))
