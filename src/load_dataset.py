@@ -61,8 +61,11 @@ def load_dataset(enc, path, combine):
     print("failed files: " + str(len(failed_files)))
     failed_str = ""
     for file, reason in failed_files:
-        print(file)
-        failed_str += "[" + reason + "] " + file + "\n"
+        try:
+            print(file)
+            failed_str += "[" + reason + "] " + file + "\n"
+        except Exception:
+            print("a file is so completely out of format, that even it could not be displayed here - skipping")
     with open("failed_files.txt", "w") as f:
         f.write(failed_str)
 
