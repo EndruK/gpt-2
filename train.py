@@ -51,6 +51,8 @@ parser.add_argument('--val_batch_size', metavar='SIZE', type=int, default=2, hel
 parser.add_argument('--val_batch_count', metavar='N', type=int, default=40, help='Number of batches for validation.')
 parser.add_argument('--val_every', metavar='STEPS', type=int, default=0, help='Calculate validation loss every STEPS steps.')
 
+parser.add_argument('--gpu_id', type=int, default=0, help='Number of the GPU to use.')
+
 
 def maketree(path):
     try:
@@ -70,6 +72,9 @@ def randomize(context, hparams, p):
 
 def main():
     args = parser.parse_args()
+    gpu_number = args.gpu_id
+    os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"]=str(gpu_number)
     enc = encoder.get_encoder(args.model_name)
     hparams = model.default_hparams()
     with open(os.path.join('models', args.model_name, 'hparams.json')) as f:
