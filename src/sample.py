@@ -67,16 +67,14 @@ def sample_sequence(*, hparams, length, start_token=None, batch_size=None, conte
                 logits = top_p_logits(logits, p=top_p)
             else:
                 logits = top_k_logits(logits, k=top_k)
-                print(logits)
-            probs = logits
+            probs = tf.expand_dims(logits, axis=1)
             samples = tf.multinomial(logits, num_samples=1, output_dtype=tf.int32)
 
-            print(probs)
             return [
                 tf.concat([past, next_outputs['presents']], axis=-2),
                 tf.squeeze(samples, axis=[1]),
                 tf.concat([output, samples], axis=1),
-                tf.concat([all_probs, probs], axis=0)
+                tf.concat([all_probs, probs], axis=1)
             ]
 
         def cond(*args):
@@ -84,7 +82,7 @@ def sample_sequence(*, hparams, length, start_token=None, batch_size=None, conte
 
         # 198 is the line break symbol \n
 
-        probs = tf.fill([batch_size, hparams.n_vocab], float(0.0))
+        probs = tf.fill([batch_size, 1, hparams.n_vocab], float(0.0))
 
         _, _, tokens, probs = tf.while_loop(
             cond=cond, body=body,
@@ -99,7 +97,8 @@ def sample_sequence(*, hparams, length, start_token=None, batch_size=None, conte
                 tf.TensorShape(model.past_shape(hparams=hparams, batch_size=batch_size)),
                 tf.TensorShape([batch_size]),
                 tf.TensorShape([batch_size, None]),
-                tf.TensorShape([None, hparams.n_vocab])
+                #tf.TensorShape([None, hparams.n_vocab])
+                tf.TensorShape([batch_size, None, hparams.n_vocab])
             ],
             back_prop=False,
         )
